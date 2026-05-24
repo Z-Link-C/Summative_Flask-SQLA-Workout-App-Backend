@@ -1,5 +1,5 @@
 ﻿# Summative_Flask-SQLA-Workout-App-Backend
-To view add and delete from the database you can run app.py or run the commands bellow.
+To view the database you can run app.py or if you want to view, delete and add to it use the commands bellow.
 ## GET ALL
 ``> curl http://localhost:5555/exercises `` <br>
 ``> curl http://localhost:5555/workouts``
