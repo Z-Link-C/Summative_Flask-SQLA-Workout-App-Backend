@@ -1,23 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import MetaData
 from sqlalchemy.orm import validates
-from datetime import datetime
 
-metadata = MetaData(naming_convention={
-    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-})
-
-db = SQLAlchemy(metadata=metadata)
-
-
-WorkoutExercises = db.Table(
-    'workout_exercises',
-    db.Column('workout_id', db.Integer, db.ForeignKey('workout.id')),
-    db.Column('exercise_id', db.Integer, db.ForeignKey('exercise.id')),
-    db.Column('reps', db.Integer),
-    db.Column('sets', db.Integer),
-    db.Column('duration_seconds', db.Integer)
-)
+db = SQLAlchemy()
 
 
 class Exercise(db.Model):
@@ -26,19 +10,21 @@ class Exercise(db.Model):
     name = db.Column(db.String, nullable=False)
     category = db.Column(db.String, nullable=False)
     equipment_needed = db.Column(db.Boolean, default=False)
-    workouts = db.relationship('Workout', secondary=WorkoutExercises, back_populates='exercises')
+
+    workout_exercises = db.relationship('WorkoutExercise', back_populates='exercise', cascade='all, delete-orphan')
+    workouts = db.relationship('Workout', secondary='workout_exercise', primaryjoin='Exercise.id==WorkoutExercise.exercise_id', secondaryjoin='Workout.id==WorkoutExercise.workout_id', backref='exercises', viewonly=True)
 
     @validates('name')
-    def validate_name(self, val):
-        if not val or not val.strip():
+    def validate_name(self, key, value):
+        if not value or not value.strip():
             raise ValueError('Exercise name cannot be empty')
-        return val.strip()
+        return value.strip()
 
     @validates('category')
-    def validate_category(self, val):
-        if not val or not val.strip():
+    def validate_category(self, key, value):
+        if not value or not value.strip():
             raise ValueError('Category cannot be empty')
-        return val.strip()
+        return value.strip()
 
 
 class Workout(db.Model):
@@ -48,16 +34,23 @@ class Workout(db.Model):
     duration_minutes = db.Column(db.Integer)
     notes = db.Column(db.Text)
 
-    exercises = db.relationship('Exercise', secondary=WorkoutExercises, back_populates='workouts')
-
-    @validates('date')
-    def validate_date(self, val):
-        if val > datetime.now().date():
-            raise ValueError('Workout date cannot be in the future')
-        return val
+    workout_exercises = db.relationship('WorkoutExercise', back_populates='workout', cascade='all, delete-orphan')
 
     @validates('duration_minutes')
-    def validate_duration_minutes(self, val):
-        if val is not None and val <= 0:
+    def validate_duration_minutes(self, key, value):
+        if value is not None and value <= 0:
             raise ValueError('Duration must be greater than 0')
-        return val
+        return value
+
+
+class WorkoutExercise(db.Model):
+    __tablename__ = 'workout_exercise'
+    id = db.Column(db.Integer, primary_key=True)
+    workout_id = db.Column(db.Integer, db.ForeignKey('workout.id'), nullable=False)
+    exercise_id = db.Column(db.Integer, db.ForeignKey('exercise.id'), nullable=False)
+    reps = db.Column(db.Integer)
+    sets = db.Column(db.Integer)
+    duration_seconds = db.Column(db.Integer)
+
+    workout = db.relationship('Workout', back_populates='workout_exercises')
+    exercise = db.relationship('Exercise', back_populates='workout_exercises')
